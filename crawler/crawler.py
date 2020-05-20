@@ -57,7 +57,11 @@ class Crawler:
         """
 
         extracted_links = []
-        r = self.__requests_retry_session().get(url, headers=HEADER, timeout=10)
+        try:
+            r = self.__requests_retry_session().get(url, headers=HEADER, timeout=10)
+        except Exception as e:
+            print("Exception : %s" % e)
+            
         tree = lxml.html.fromstring(r.content)
 
         body = tree.find('body')
