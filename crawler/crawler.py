@@ -9,13 +9,18 @@ from requests.packages.urllib3.util.retry import Retry
 DOMAIN_PREFIX = 'https://www.openrice.com'
 DOMAIN_NAME = 'openrice'
 HEADER = {'User-Agent': 'Mozilla/5.0'}
-
+WWW = 'www'
+RESTAURANT_FINGERPRINTS = ['hongkong/r-', 'restaurants']
+REVIEW_FINGERPRINT = 'review/'
 
 class Crawler:
 
-    def __init__(self, start_url: str = None) -> None:
+    def __init__(self, start_url: str = None, language='zh', timeout=10) -> None:
         self.start_url = start_url
-        self.history = {}
+        self.language = language
+        self.timeout = timeout
+        self.history = set()
+        self.reviews = set()
 
     @staticmethod
     def __requests_retry_session(
@@ -25,8 +30,8 @@ class Crawler:
             session: Session = None,
     ) -> Session:
         """
-        Handles retries for request HTTP requests
-        params are similar to those for requests.packages.urllib3.util.retry.Retry
+        Handles retries for request HTTP requests params are similar to those
+        for requests.packages.urllib3.util.retry.Retry
         https://www.peterbe.com/plog/best-practice-with-retries-with-requests
         """
         session = session or requests.Session()
@@ -51,7 +56,7 @@ class Crawler:
         """
 
         extracted_links = []
-        r = self.__requests_retry_session().get(url, headers=HEADER)
+        r = self.__requests_retry_session().get(url, headers=HEADER, timeout=10)
         tree = lxml.html.fromstring(r.content)
 
         body = tree.find('body')
@@ -70,7 +75,7 @@ class Crawler:
                 link = link.strip()
 
                 domain_info = tldextract.extract(link)
-                if (link[0] != '/' and domain_info.domain != DOMAIN_NAME):
+                if link[0] != '/' and domain_info.domain != DOMAIN_NAME:
                     continue
 
                 if link[0] == '/':
@@ -80,8 +85,46 @@ class Crawler:
 
         return extracted_links
 
+    def _filter_restaurant_and_review_links(self, links: List[str]) -> (List[str], List[str]):
+        """
+        Filters a list of links to extract links to restaurant info and links to reviews
+        :param links: a list of links
+        :return: a tuple containing a list of restaurant links and review links
+        """
+
+        links = [l for l in links if tldextract.extract(l).subdomain == WWW and ('/%s/' % self.language) in l]
+
+        review_links = [l for l in links if REVIEW_FINGERPRINT in l and l not in self.reviews]
+        restaurant_links = []
+
+        for fingerprint in RESTAURANT_FINGERPRINTS:
+            for link in links:
+                if fingerprint in link and link not in self.history:
+                    restaurant_links.append(link)
+
+        restaurant_links = list(set(restaurant_links))
+        review_links = list(set(review_links))
+
+        return restaurant_links, review_links
+
+    def crawl(self, url: str, recur_level: int) -> None:
+
+        if recur_level > 25:
+            return
+
+        self.history.add(url)
+
+        links_extracted = self.extract_internal_links(url)
+        restaurant_links, review_links = self._filter_restaurant_and_review_links(links_extracted)
+        self.reviews.union(review_links)
+        for link in restaurant_links:
+            self
+
+
+
 
 
 if __name__ == '__main__':
     c = Crawler()
-    c.extract_internal_links('https://www.openrice.com/en/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
+    e = c.extract_internal_links('https://www.openrice.com/en/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
+    c._filter_restaurant_and_review_links(e)
