@@ -12,6 +12,7 @@ HEADER = {'User-Agent': 'Mozilla/5.0'}
 WWW = 'www'
 RESTAURANT_FINGERPRINTS = ['hongkong/r-', 'restaurants']
 REVIEW_FINGERPRINT = 'review/'
+REVIEW_FILE = 'reviewsurl.csv'
 
 class Crawler:
 
@@ -107,24 +108,39 @@ class Crawler:
 
         return restaurant_links, review_links
 
-    def crawl(self, url: str, recur_level: int) -> None:
+    def __save_review_links(self) -> None:
 
-        if recur_level > 25:
+        with open(REVIEW_FILE, 'w') as fp:
+            fp.write('\n'.join(self.reviews))
+
+    def crawl(self, url: str, recur_level: int=0) -> None:
+        """
+        Main crawling function
+        :param url: url to start the crawl from
+        :param recur_level: max recursion level to prevent crawling endlessly
+        :return:
+        """
+
+        if recur_level > 25 or url in self.history:
             return
 
-        self.history.add(url)
-
+        print("Crawling: %s\nRecursion level: %s" % (url, recur_level))
         links_extracted = self.extract_internal_links(url)
         restaurant_links, review_links = self._filter_restaurant_and_review_links(links_extracted)
         self.reviews.union(review_links)
+        self.history.add(url)
+
+        if not (len(self.history) % 1000):
+            print("="*25)
+            print("Total pages crawled: %s" % len(self.history))
+            print("Total reviews collected: %s" % len(self.reviews))
+            print("Saving...")
+            self.__save_review_links()
+
         for link in restaurant_links:
-            self
-
-
-
+            self.crawl(link, recur_level+1)
 
 
 if __name__ == '__main__':
     c = Crawler()
-    e = c.extract_internal_links('https://www.openrice.com/en/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
-    c._filter_restaurant_and_review_links(e)
+    e = c.crawl('https://www.openrice.com/en/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
