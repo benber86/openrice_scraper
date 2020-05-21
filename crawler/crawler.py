@@ -128,7 +128,7 @@ class Crawler:
         if recur_level > 25 or url in self.history:
             return
 
-        print("Crawling: %s\nRecursion level: %s" % (url, recur_level))
+        print("Crawling (%s): %s" % (recur_level, url))
         links_extracted = self.extract_internal_links(url)
         restaurant_links, review_links = self._filter_restaurant_and_review_links(links_extracted)
         self.reviews.union(review_links)
