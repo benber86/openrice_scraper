@@ -131,10 +131,10 @@ class Crawler:
         print("Crawling (%s): %s" % (recur_level, url))
         links_extracted = self.extract_internal_links(url)
         restaurant_links, review_links = self._filter_restaurant_and_review_links(links_extracted)
-        self.reviews.union(review_links)
+        self.reviews = self.reviews.union(review_links)
         self.history.add(url)
 
-        if not (len(self.history) % 1000):
+        if not (len(self.history) % 10):
             print("="*25)
             print("Total pages crawled: %s" % len(self.history))
             print("Total reviews collected: %s" % len(self.reviews))
