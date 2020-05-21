@@ -147,4 +147,4 @@ class Crawler:
 
 if __name__ == '__main__':
     c = Crawler()
-    e = c.crawl('https://www.openrice.com/en/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
+    e = c.crawl('https://www.openrice.com/zh/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
