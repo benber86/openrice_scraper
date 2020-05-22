@@ -5,6 +5,7 @@ import tldextract
 from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from multiprocessing import Pool
 
 DOMAIN_PREFIX = 'https://www.openrice.com'
 DOMAIN_NAME = 'openrice'
@@ -61,6 +62,7 @@ class Crawler:
             r = self.__requests_retry_session().get(url, headers=HEADER, timeout=10)
         except Exception as e:
             print("Exception : %s" % e)
+            return []
             
         tree = lxml.html.fromstring(r.content)
 
@@ -147,4 +149,14 @@ class Crawler:
 
 if __name__ == '__main__':
     c = Crawler()
-    e = c.crawl('https://www.openrice.com/zh/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
+    # p = Pool(5)
+    # starting_links = ['https://www.openrice.com/zh/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews',
+    #                   'https://www.openrice.com/zh/hongkong/restaurants/dish/%E6%B2%99%E5%BE%8B',
+    #                   'https://www.openrice.com/zh/hongkong/restaurants/district/%E5%85%83%E6%9C%97',
+    #                   'https://www.openrice.com/zh/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews',
+    #                   'https://www.openrice.com/zh/hongkong/restaurants/type/%E6%97%A5%E5%BC%8F%E8%A5%BF%E9%A4%90%E5%BB%B3'
+    #                   ]
+    # records = p.map(c.crawl, starting_links)
+    # p.terminate()
+    # p.join()
+    c.crawl('https://www.openrice.com/zh/hongkong/r-micasadeco-cafe-hong-kong-mong-kok-western-dessert-r643135/reviews')
