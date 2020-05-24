@@ -1,6 +1,7 @@
 import os
 import requests
 import lxml.html
+import pandas as pd
 from lxml.html import HtmlElement
 from requests import Session
 from requests.adapters import HTTPAdapter
@@ -8,6 +9,7 @@ from requests.packages.urllib3.util.retry import Retry
 from enum import Enum
 from typing import List, Optional, NamedTuple
 from typing_extensions import Literal
+from multiprocessing import Pool
 
 HEADER = {"User-Agent": "Mozilla/5.0"}
 
@@ -28,6 +30,7 @@ class Evaluation(Enum):
     POSITIVE: int = 1
     NEUTRAL: int = 0
     NEGATIVE: int = -1
+    NONE: None = None
 
 
 class Ratings(NamedTuple):
@@ -40,11 +43,10 @@ class Ratings(NamedTuple):
 
 
 class ScrapedData(NamedTuple):
+    url: str
     title: Optional[str] = None
     review: Optional[str] = None
-    sentiment: Optional[
-        Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]
-    ] = None
+    sentiment: Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE, Evaluation.NONE] = Evaluation.NONE
     taste: Optional[int] = None
     environment: Optional[int] = None
     service: Optional[int] = None
@@ -61,7 +63,7 @@ class Scraper:
         with open(url_file, "r") as fp:
             self.urls = [_.strip() for _ in fp.readlines()]
 
-        self.data: List[Optional[ScrapedData]] = []
+        self.data: list = []
 
     @staticmethod
     def __requests_retry_session(
@@ -104,12 +106,10 @@ class Scraper:
     @staticmethod
     def __extract_sentiment(
         elements: List[HtmlElement]
-    ) -> Optional[
-        Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]
-    ]:
+    ) -> Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE, Evaluation.NONE]:
 
         if len(elements) < 1:
-            return None
+            return Evaluation.NONE
         element = elements[0]
         if len(element.xpath(POSITIVE_XPATH)) > 0:
             return Evaluation.POSITIVE
@@ -117,7 +117,7 @@ class Scraper:
             return Evaluation.NEUTRAL
         elif len(element.xpath(NEGATIVE_XPATH)) > 0:
             return Evaluation.NEGATIVE
-        return None
+        return Evaluation.NONE
 
     @staticmethod
     def __extract_ratings(elements) -> Ratings:
@@ -138,6 +138,7 @@ class Scraper:
 
     def scrape_page(self, url: str) -> ScrapedData:
 
+        print("Scraping : %s" % url)
         r = self.__requests_retry_session().get(url, headers=HEADER, timeout=10)
         tree = lxml.html.fromstring(r.content)
 
@@ -153,4 +154,20 @@ class Scraper:
         # Extract specific grades
         ratings = self.__extract_ratings(tree.xpath(RATING_XPATH))
 
-        return ScrapedData(title, review, sentiment, *ratings._asdict().values())
+        return ScrapedData(url, title, review, sentiment.value, *ratings._asdict().values())
+
+    def scrape(self) -> None:
+        p = Pool(5)
+        self.data = p.map(self.scrape_page, self.urls)
+        p.terminate()
+        p.join()
+
+    def save(self, output_file: str = 'content.csv'):
+        data = pd.DataFrame(self.data)
+        data.to_csv(output_file, index=None)
+
+
+if __name__ == "__main__":
+    s = Scraper('reviewsurl.csv')
+    s.scrape()
+    s.save()
