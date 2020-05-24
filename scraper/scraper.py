@@ -46,7 +46,9 @@ class ScrapedData(NamedTuple):
     url: str
     title: Optional[str] = None
     review: Optional[str] = None
-    sentiment: Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE, Evaluation.NONE] = Evaluation.NONE
+    sentiment: Literal[
+        Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE, Evaluation.NONE
+    ] = Evaluation.NONE
     taste: Optional[int] = None
     environment: Optional[int] = None
     service: Optional[int] = None
@@ -106,7 +108,9 @@ class Scraper:
     @staticmethod
     def __extract_sentiment(
         elements: List[HtmlElement]
-    ) -> Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE, Evaluation.NONE]:
+    ) -> Literal[
+        Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE, Evaluation.NONE
+    ]:
 
         if len(elements) < 1:
             return Evaluation.NONE
@@ -154,7 +158,9 @@ class Scraper:
         # Extract specific grades
         ratings = self.__extract_ratings(tree.xpath(RATING_XPATH))
 
-        return ScrapedData(url, title, review, sentiment.value, *ratings._asdict().values())
+        return ScrapedData(
+            url, title, review, sentiment.value, *ratings._asdict().values()
+        )
 
     def scrape(self) -> None:
         p = Pool(5)
@@ -162,12 +168,12 @@ class Scraper:
         p.terminate()
         p.join()
 
-    def save(self, output_file: str = 'content.csv'):
+    def save(self, output_file: str = "content.csv"):
         data = pd.DataFrame(self.data)
         data.to_csv(output_file, index=None)
 
 
 if __name__ == "__main__":
-    s = Scraper('reviewsurl.csv')
+    s = Scraper("reviewsurl.csv")
     s.scrape()
     s.save()
