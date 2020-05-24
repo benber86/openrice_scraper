@@ -5,6 +5,7 @@ from lxml.html import HtmlElement
 from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from enum import Enum
 from typing import List, Optional
 from typing_extensions import Literal
 from typing import NamedTuple
@@ -23,9 +24,11 @@ POSITIVE_XPATH = './/div[contains(@class, "smiley_smile")]'
 NEUTRAL_XPATH = './/div[contains(@class, "smiley_ok")]'
 NEGATIVE_XPATH = './/div[contains(@class, "smiley_cry")]'
 
-POSITIVE: int = 1
-NEUTRAL: int = 0
-NEGATIVE: int = -1
+
+class Evaluation(Enum):
+    POSITIVE: int = 1
+    NEUTRAL: int = 0
+    NEGATIVE: int = -1
 
 
 class Ratings(NamedTuple):
@@ -86,17 +89,17 @@ class Scraper:
             return None
 
     @staticmethod
-    def __extract_sentiment(elements: List[HtmlElement]) -> Optional[Literal[POSITIVE, NEUTRAL, NEGATIVE]]:
+    def __extract_sentiment(elements: List[HtmlElement]) -> Optional[Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]]:
 
         if len(elements) < 1:
             return None
         element = elements[0]
         if len(element.xpath(POSITIVE_XPATH)) > 0:
-            return POSITIVE
+            return Evaluation.POSITIVE
         elif len(element.xpath(NEUTRAL_XPATH)) > 0:
-            return NEUTRAL
+            return Evaluation.NEUTRAL
         elif len(element.xpath(NEGATIVE_XPATH)) > 0:
-            return NEGATIVE
+            return Evaluation.NEGATIVE
         return None
 
     @staticmethod
@@ -112,7 +115,7 @@ class Scraper:
 
         extracted_ratings = Ratings()
         for i, subject in enumerate(rating_subjects):
-            extracted_ratings[i] = len(subject.xpath(STAR_XPATH))
+            extracted_ratings[i] = len(subject.xpath(STAR_XPATH)) #type: ignore
 
         return extracted_ratings
 
