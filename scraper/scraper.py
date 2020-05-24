@@ -6,11 +6,10 @@ from requests import Session
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, NamedTuple
 from typing_extensions import Literal
-from typing import NamedTuple
 
-HEADER = {'User-Agent': 'Mozilla/5.0'}
+HEADER = {"User-Agent": "Mozilla/5.0"}
 
 TITLE_XPATH = '//div[@class="review-title"]'
 REVIEW_XPATH = '//section[@class="review-container"]'
@@ -33,38 +32,43 @@ class Evaluation(Enum):
 
 class Ratings(NamedTuple):
 
-    Taste: Optional[int] = None
-    Environment: Optional[int] = None
-    Service: Optional[int] = None
-    Hygiene: Optional[int] = None
-    Value: Optional[int] = None
+    taste: Optional[int] = None
+    environment: Optional[int] = None
+    service: Optional[int] = None
+    hygiene: Optional[int] = None
+    value: Optional[int] = None
 
 
 class ScrapedData(NamedTuple):
-    Title: Optional[str] = None
-    Review: Optional[str] = None
-    Sentiment: Optional[Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]] = None
-    Ratings: Ratings = Ratings()
+    title: Optional[str] = None
+    review: Optional[str] = None
+    sentiment: Optional[
+        Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]
+    ] = None
+    taste: Optional[int] = None
+    environment: Optional[int] = None
+    service: Optional[int] = None
+    hygiene: Optional[int] = None
+    value: Optional[int] = None
 
 
 class Scraper:
-
     def __init__(self, url_file: str) -> None:
 
         if not os.path.exists(url_file):
             raise OSError("File Not Found: %s" % url_file)
 
-        with open(url_file, 'r') as fp:
+        with open(url_file, "r") as fp:
             self.urls = [_.strip() for _ in fp.readlines()]
 
-        self.data = []
+        self.data: List[Optional[ScrapedData]] = []
 
     @staticmethod
     def __requests_retry_session(
-            retries: int = 3,
-            backoff_factor: float = 0.3,
-            status_forcelist: tuple = (500, 502, 504),
-            session: Session = None,
+        retries: int = 3,
+        backoff_factor: float = 0.3,
+        status_forcelist: tuple = (500, 502, 504),
+        session: Session = None,
     ) -> Session:
         """
         Handles retries for request HTTP requests params are similar to those
@@ -80,8 +84,8 @@ class Scraper:
             status_forcelist=status_forcelist,
         )
         adapter = HTTPAdapter(max_retries=retry)
-        session.mount('http://', adapter)
-        session.mount('https://', adapter)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
         return session
 
     @staticmethod
@@ -98,7 +102,11 @@ class Scraper:
             return None
 
     @staticmethod
-    def __extract_sentiment(elements: List[HtmlElement]) -> Optional[Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]]:
+    def __extract_sentiment(
+        elements: List[HtmlElement]
+    ) -> Optional[
+        Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]
+    ]:
 
         if len(elements) < 1:
             return None
@@ -122,7 +130,9 @@ class Scraper:
         if len(rating_subjects) != 5:
             return Ratings()
 
-        extracted_ratings = Ratings(*[len(_.xpath(STAR_XPATH)) for _ in rating_subjects])
+        extracted_ratings = Ratings(
+            *[len(_.xpath(STAR_XPATH)) for _ in rating_subjects]
+        )
 
         return extracted_ratings
 
@@ -143,4 +153,4 @@ class Scraper:
         # Extract specific grades
         ratings = self.__extract_ratings(tree.xpath(RATING_XPATH))
 
-        return ScrapedData(title, review, sentiment, ratings)
+        return ScrapedData(title, review, sentiment, *ratings._asdict().values())
