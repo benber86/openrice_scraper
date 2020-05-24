@@ -40,6 +40,13 @@ class Ratings(NamedTuple):
     Value: Optional[int] = None
 
 
+class ScrapedData(NamedTuple):
+    Title: Optional[str] = None
+    Review: Optional[str] = None
+    Sentiment: Optional[Literal[Evaluation.POSITIVE, Evaluation.NEUTRAL, Evaluation.NEGATIVE]] = None
+    Ratings: Ratings = Ratings()
+
+
 class Scraper:
 
     def __init__(self, url_file: str) -> None:
@@ -49,6 +56,8 @@ class Scraper:
 
         with open(url_file, 'r') as fp:
             self.urls = [_.strip() for _ in fp.readlines()]
+
+        self.data = []
 
     @staticmethod
     def __requests_retry_session(
@@ -113,13 +122,11 @@ class Scraper:
         if len(rating_subjects) != 5:
             return Ratings()
 
-        extracted_ratings = Ratings()
-        for i, subject in enumerate(rating_subjects):
-            extracted_ratings[i] = len(subject.xpath(STAR_XPATH)) #type: ignore
+        extracted_ratings = Ratings(*[len(_.xpath(STAR_XPATH)) for _ in rating_subjects])
 
         return extracted_ratings
 
-    def scrape_page(self, url: str):
+    def scrape_page(self, url: str) -> ScrapedData:
 
         r = self.__requests_retry_session().get(url, headers=HEADER, timeout=10)
         tree = lxml.html.fromstring(r.content)
@@ -135,3 +142,5 @@ class Scraper:
 
         # Extract specific grades
         ratings = self.__extract_ratings(tree.xpath(RATING_XPATH))
+
+        return ScrapedData(title, review, sentiment, ratings)
